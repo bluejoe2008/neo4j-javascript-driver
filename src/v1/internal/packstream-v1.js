@@ -374,6 +374,11 @@ class Unpacker {
       return boolean;
     }
 
+		const blob = this._unpackBlob(marker);
+		if (blob != null) {
+			return blob;
+		}
+
     const numberOrInteger = this._unpackNumberOrInteger(marker, buffer);
     if (numberOrInteger !== null) {
       if (this._disableLosslessIntegers && isInt(numberOrInteger)) {
@@ -505,6 +510,41 @@ class Unpacker {
       return null;
     }
   }
+	_unpackBlob(marker, buffer) {
+		//BOLT_VALUE_TYPE_BLOB_REMOTE
+		if (marker == 0xC4) {
+			/*
+			 val values = for (i <- 0 to 3) yield in.readLong();
+			 val (bid, length, mt) = _unpackBlobValue(values.toArray);
+
+			 val lengthUrl = in.readInt();
+			 val bs = new Array[Byte](lengthUrl);
+			 in.readBytes(bs, 0, lengthUrl);
+
+			 val url = new String(bs, "utf-8");
+			 new RemoteBlob(url, bid, length, mt);
+			 */
+			var l1 = buffer.readUInt32();
+			var l2 = buffer.readUInt32();
+			var l3 = buffer.readUInt32();
+
+			var url = utf8.decode(buffer, buffer.readUInt16());
+			return url;
+		}
+	}
+
+
+	_unpackByteArray(marker, buffer) {
+		if (marker == BYTES_8) {
+			return this._unpackByteArrayWithSize(buffer.readUInt8(), buffer);
+		} else if (marker == BYTES_16) {
+			return this._unpackByteArrayWithSize(buffer.readUInt16(), buffer);
+		} else if (marker == BYTES_32) {
+			return this._unpackByteArrayWithSize(buffer.readUInt32(), buffer);
+		} else {
+			return null;
+		}
+	}
 
   _unpackByteArrayWithSize(size, buffer) {
     const value = new Int8Array(size);
