@@ -21,6 +21,7 @@ import Integer, {int, isInt} from '../integer';
 import {newError, PROTOCOL_ERROR} from './../error';
 import {Chunker} from './chunking';
 import {Node, Path, PathSegment, Relationship, UnboundRelationship} from '../graph-types';
+import {BigNumber} from 'bignumber.js';
 
 const TINY_STRING = 0x80;
 const TINY_LIST = 0x90;
@@ -351,6 +352,72 @@ class Packer {
   * @access private
   */
 class Unpacker {
+  _readUInt16s(buffer, num) {
+    var vv = [];
+    for(var i = 0; i < num; i++){
+      vv.push(buffer.readUInt16());
+    }
+
+    return vv;
+  }
+
+  _unpackBlob(marker, buffer) {
+    //BOLT_VALUE_TYPE_BLOB_REMOTE
+    if (marker == 0xC4 || marker == 0xC5) {
+      var l1 = buffer.readInt64();
+      var l2 = this._readUInt16s(buffer, 4);
+      //[llll,llll][llll,llll][llll,llll][llll,llll][llll,llll][llll,llll][mmmm,mmmm][mmmm,mmmm] (l=length, m=mimeType)
+
+      const BigNumber = require("bignumber.js");
+      //var length = l2[0] << 32 | l2[1] << 16 | l2[2];
+      var length = parseInt(
+        new BigNumber(l2[0]).times(256).times(256).times(256).times(256)
+        .plus(new BigNumber(l2[1]).times(256).times(256))
+        .plus(l2[2])
+        .toNumber());
+
+      var mime = parseInt(l2[3]);
+
+      var vv = this._readUInt16s(buffer, 8);
+      var bid = this._blobId2String(vv);
+      var pretty = {
+        '@type': 'blob',
+        id: bid,
+        length: length,
+        mimetype: mime
+      };
+
+      if(marker == 0xC4) {
+        var lenUrl = buffer.readUInt32();
+        var url = utf8.decode(buffer, lenUrl);
+        pretty.url = url + "?bid=" + bid;
+      }
+
+      return pretty;
+    }
+
+    return null;
+  }
+
+  _fillString(blank, str) {
+    return blank.substring(0, blank.length - str.length).concat(str);
+  }
+
+  _blobId2String(vv) {
+    return ""
+      + this._fillString("0000", vv[0].toString(16))
+      + this._fillString("0000", vv[1].toString(16))
+      + "-"
+      + this._fillString("0000", vv[2].toString(16))
+      + "-"
+      + this._fillString("0000", vv[3].toString(16))
+      + "-"
+      + this._fillString("0000", vv[4].toString(16))
+      + "-"
+      + this._fillString("0000", vv[5].toString(16))
+      + this._fillString("0000", vv[6].toString(16))
+      + this._fillString("0000", vv[7].toString(16));
+  }
 
   /**
    * @constructor
@@ -374,7 +441,7 @@ class Unpacker {
       return boolean;
     }
 
-		const blob = this._unpackBlob(marker);
+		const blob = this._unpackBlob(marker, buffer);
 		if (blob != null) {
 			return blob;
 		}
@@ -498,41 +565,6 @@ class Unpacker {
     }
     return value;
   }
-
-  _unpackByteArray(marker, buffer) {
-    if (marker == BYTES_8) {
-      return this._unpackByteArrayWithSize(buffer.readUInt8(), buffer);
-    } else if (marker == BYTES_16) {
-      return this._unpackByteArrayWithSize(buffer.readUInt16(), buffer);
-    } else if (marker == BYTES_32) {
-      return this._unpackByteArrayWithSize(buffer.readUInt32(), buffer);
-    } else {
-      return null;
-    }
-  }
-	_unpackBlob(marker, buffer) {
-		//BOLT_VALUE_TYPE_BLOB_REMOTE
-		if (marker == 0xC4) {
-			/*
-			 val values = for (i <- 0 to 3) yield in.readLong();
-			 val (bid, length, mt) = _unpackBlobValue(values.toArray);
-
-			 val lengthUrl = in.readInt();
-			 val bs = new Array[Byte](lengthUrl);
-			 in.readBytes(bs, 0, lengthUrl);
-
-			 val url = new String(bs, "utf-8");
-			 new RemoteBlob(url, bid, length, mt);
-			 */
-			var l1 = buffer.readUInt32();
-			var l2 = buffer.readUInt32();
-			var l3 = buffer.readUInt32();
-
-			var url = utf8.decode(buffer, buffer.readUInt16());
-			return url;
-		}
-	}
-
 
 	_unpackByteArray(marker, buffer) {
 		if (marker == BYTES_8) {
