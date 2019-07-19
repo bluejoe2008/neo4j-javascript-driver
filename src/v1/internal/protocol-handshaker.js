@@ -77,6 +77,10 @@ export default class ProtocolHandshaker {
         return new BoltProtocolV2(this._connection, this._chunker, this._disableLosslessIntegers);
       case 3:
         return new BoltProtocolV3(this._connection, this._chunker, this._disableLosslessIntegers);
+      case 4:
+        return new BoltProtocolV3(this._connection, this._chunker, this._disableLosslessIntegers);
+      case 5:
+        return new BoltProtocolV3(this._connection, this._chunker, this._disableLosslessIntegers);
       case HTTP_MAGIC_PREAMBLE:
         throw newError('Server responded HTTP. Make sure you are not trying to connect to the http endpoint ' +
           '(HTTP defaults to port 7474 whereas BOLT defaults to port 7687)');
@@ -97,10 +101,21 @@ function newHandshakeBuffer() {
   handshakeBuffer.writeInt32(BOLT_MAGIC_PREAMBLE);
 
   //proposed versions
-  handshakeBuffer.writeInt32(3);
-  handshakeBuffer.writeInt32(2);
-  handshakeBuffer.writeInt32(1);
-  handshakeBuffer.writeInt32(0);
+  const blobSupport = true;
+
+  //for blob support
+  if(blobSupport) {
+    handshakeBuffer.writeInt32(5);
+    handshakeBuffer.writeInt32(4);
+    handshakeBuffer.writeInt32(3);
+    handshakeBuffer.writeInt32(2);
+  }
+  else {
+    handshakeBuffer.writeInt32(3);
+    handshakeBuffer.writeInt32(2);
+    handshakeBuffer.writeInt32(1);
+    handshakeBuffer.writeInt32(0);
+  }
 
   // reset the reader position
   handshakeBuffer.reset();
