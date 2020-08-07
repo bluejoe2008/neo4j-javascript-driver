@@ -174,12 +174,21 @@ class Path {
 }
 
 class InlineBlob {
-  constructor(id, length, mimeTypeCode, mimeType, data) {
+  constructor(id, length, mimeTypeCode, mimeType, buffer) {
     this.id = id;
     this.length = length;
     this.mimeTypeCode = mimeTypeCode;
     this.mimeType = mimeType;
-    this.data = data;
+    
+    var bytes = [];
+    for (var i = 0; i < buffer.length; i++) {
+      bytes[i] = buffer.getUInt8(i);
+    }
+
+    var buffer = new Uint8Array(bytes);
+    var blob = new Blob([buffer], { type: mimeType });
+
+    this.url = URL.createObjectURL(blob);
     this['@blob-type'] = 'inline';
   }
 }
