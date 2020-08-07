@@ -173,10 +173,34 @@ class Path {
   }
 }
 
+class InlineBlob {
+  constructor(id, length, mimeTypeCode, mimeType, data) {
+    this.id = id;
+    this.length = length;
+    this.mimeTypeCode = mimeTypeCode;
+    this.mimeType = mimeType;
+    this.data = data;
+    this['@blob-type'] = 'inline';
+  }
+}
+
+class RemoteBlob {
+  constructor(id, length, mimeTypeCode, mimeType, handle) {
+    this.id = id;
+    this.length = length;
+    this.mimeTypeCode = mimeTypeCode;
+    this.mimeType = mimeType;
+    this.handle = handle;
+    this['@blob-type'] = 'remote';
+  }
+}
+
 export {
   Node,
   Relationship,
   UnboundRelationship,
   Path,
-  PathSegment
+  PathSegment,
+  RemoteBlob,
+  InlineBlob
 }
